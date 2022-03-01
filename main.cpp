@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////
-// Roland V-8HD Tally Light Monitor
+// Roland V-8HD Tally Light Monitor / Decoder
 // Code by Guido Scognamiglio - www.GenuineSoundware.com
 // Last update: Mar 2022
 //
@@ -59,7 +59,7 @@ RPi GPIO MAP
 #include <cstring>
 #include <iterator>
 
-// Pin number declarations. We're using the Broadcom chip pin numbers.
+// Pin numbers. We're using the Broadcom chip pin numbers.
 #define RELAY1	0	//	17
 #define RELAY2	1	//	18
 #define RELAY3	2	//	27
@@ -112,7 +112,7 @@ void PollSwitcher()
 			continue;
 
 		// Send request for the currently selected Tally number
-		// F0 41 10 00 00 00 68 11 0c 00 00 00 00 08 6C F7
+		// F0 41 10 00 00 00 68 11 0c 00 xx 00 00 08 ck F7
 
 		std::vector<unsigned char> syx;
 		syx.push_back(0xF0);
@@ -173,31 +173,14 @@ void ProcessSysexChunk(std::vector<unsigned char>& midiData)
 				TALLY = t;
 
 #ifdef WIN32
-		/*printf(
-			"1:%s 2:%s 3:%s 4:%s 5:%s 6:%s 7:%s 8:%s\r", 
-			(TallyStatus[0] == 1 ? "*" : " "),
-			(TallyStatus[1] == 1 ? "*" : " "),
-			(TallyStatus[2] == 1 ? "*" : " "),
-			(TallyStatus[3] == 1 ? "*" : " "),
-			(TallyStatus[4] == 1 ? "*" : " "),
-			(TallyStatus[5] == 1 ? "*" : " "),
-			(TallyStatus[6] == 1 ? "*" : " "),
-			(TallyStatus[7] == 1 ? "*" : " ")
-			);*/
-
 		printf("Tally = %d\r", TALLY);
 #else
-
 		for (int t = 0; t < 8; ++t)
-		{
 			digitalWrite(relays[t], TALLY == t ? 0 : 1);
-		}
 #endif
 	}
 }
 
-// This is the callback function for receiving the MIDI INPUT stream.
-// This function must be static, otherwise it can't be referenced, but we use the *userData pointer to point to a non-static function
 void ProcessMidiInputCallback(double /*deltatime*/, std::vector<unsigned char>* message, void* /*userData*/)
 {
 	std::vector<unsigned char>& midiData = *message;	// Deference
@@ -252,7 +235,8 @@ void OpenMidiPorts()
 	// Setup MIDI IN 
 	if (MidiInPortNum >= 0 && !MidiIn->isPortOpen())
 	{
-		delete MidiIn; MidiIn = new RtMidiIn();
+		delete MidiIn; 
+		MidiIn = new RtMidiIn();
 		MidiIn->openPort(MidiInPortNum);
 		MidiIn->ignoreTypes(false, true, true);	// must be set for accepting SysEx
 		MidiIn->setCallback(ProcessMidiInputCallback, nullptr);
@@ -262,7 +246,8 @@ void OpenMidiPorts()
 	// Setup MIDI OUT 
 	if (MidiOutPortNum >= 0 && !MidiOut->isPortOpen())
 	{
-		delete MidiOut; MidiOut = new RtMidiOut();
+		delete MidiOut; 
+		MidiOut = new RtMidiOut();
 		MidiOut->openPort(MidiOutPortNum);
 		MidiOut->setErrorCallback(myRtMidiErrorCallback);
 	}
@@ -278,20 +263,18 @@ int main(int argc, char** argv)
 		pid = fork(); if (pid < 0) exit(EXIT_FAILURE); if (pid > 0) exit(EXIT_SUCCESS);
 	}
 
-	// Initialize wiringPi using wiringPi pin numbers
+	// Initialize wiringPi using Broadcom pin numbers
 	wiringPiSetup();
 
 	// Set GPIO outputs and reset relays
 	for (int r = 0; r < 8; ++r)
 	{
-		// Set output pins
 		pinMode(relays[r], OUTPUT);
-		// Restore saved status
 		digitalWrite(relays[r], 1);
 	}
 #endif
 
-
+	// Attempt to open Midi ports
 	OpenMidiPorts();
 
 	// Display status
@@ -299,7 +282,7 @@ int main(int argc, char** argv)
 	//cout << "IN: " << MidiIn->getPortName(MidiInPortNum) << "\n";
 	//cout << "OUT: " << MidiOut->getPortName(MidiOutPortNum) << "\n";
 
-	// Run polling thread
+	// Run Midi polling thread
 	RunningThread = std::thread(&PollSwitcher);
 
 #ifdef WIN32
