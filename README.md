@@ -11,4 +11,7 @@ I have tested it on a Raspberry Pi 3 that I had handy, but it should run on ever
 Also, if launched with the -d argument, it can be ran as a daemon. Copy the executable in a directory with chmod 755 and run it at startup from a systemctl service,
 so you have your own Roland Tally controller with less than $30.
 
+See it in action:
+https://www.youtube.com/watch?v=GsHVB5VyFAA
+
 Guido.
